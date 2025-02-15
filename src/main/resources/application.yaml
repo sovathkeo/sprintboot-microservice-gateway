@@ -1,0 +1,95 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: gateway-boilerplate
+  r2dbc:
+    url: ${DATABASE_URL:r2dbc:mssql://172.16.101.29:1433/STG}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
+
+  data:
+    redis:
+      host: 172.16.101.14
+      port: 6379
+      password: UOWMh5uVKi
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 8        # Maximum number of connections in the pool
+          max-idle: 8          # Maximum number of idle connections
+          min-idle: 0          # Minimum number of idle connections
+          time-between-eviction-runs: 60000ms # Time between eviction runs
+
+  security:
+    oauth2:
+      resource-server:
+        jwt:
+          issuer-uri: http://localhost:9000
+
+  cloud:
+    config:
+      enabled: false
+    gateway:
+      httpclient:
+        connect-timeout: 1000
+      ignore:
+        predicate:
+          - Path=/actuator/**
+      routes:
+        - id: loopback
+          uri: "https://622bf548-c8f6-409c-a314-eb4a23a3caf9.mock.pstmn.io"
+          predicates:
+            - Path=/loopback/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /loopback
+                replacement: /test
+#            - name: RequestRateLimiter
+#              args:
+#                redis-rate-limiter.replenishRate: 1 # Requests allowed per second
+#                redis-rate-limiter.burstCapacity: 2 # Maximum burst capacity
+#                key-resolver: "#{@ipKeyResolver}" # Reference the KeyResolver bean
+
+bucket4j:
+  enabled: true
+  cache-to-use: redis-lettuce
+  filter-config-caching-enabled: true
+  filter-config-cache-name: filterConfigCache
+
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    env:
+      show-values: ALWAYS #WHEN_AUTHORIZED #ALWAYS
+  security:
+    enabled: false
+  info:
+    env:
+      enabled: true
+
+logging:
+  level:
+    org:
+      springframework: INFO
+  pattern:
+    date-format: yyyy-dd-MM HH:mm:ss.SSS
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS}  %-5level 1 --- [%-20.20thread] %-38X{X-CorrelationId:-00000000-0000-0000-0000-000000000000} %-30.30logger{0} : %msg%n'
+
+
+application-config:
+  authentication:
+    enabled: false
+    type: NONE
+    basic-auth-users:
+      - username: user1
+        password: user1
+
