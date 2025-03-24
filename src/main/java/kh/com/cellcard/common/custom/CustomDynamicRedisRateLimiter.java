@@ -1,10 +1,6 @@
 package kh.com.cellcard.common.custom;
 
-import org.springframework.cloud.gateway.event.FilterArgsEvent;
 import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
