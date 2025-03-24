@@ -1,9 +1,8 @@
 package kh.com.cellcard.common.configuration.custom;
 
+import kh.com.cellcard.common.custom.ClientKeyResolver;
 import kh.com.cellcard.common.custom.CustomDynamicRedisRateLimiter;
-import kh.com.cellcard.common.custom.IpKeyResolver;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
@@ -19,10 +18,7 @@ public class CustomGatewayConfig {
     private DatabaseClient databaseClient;
 
     @Autowired
-    private IpKeyResolver ipKeyResolver;
-
-    //@Autowired
-    //private RedisRateLimiter redisRateLimiter;
+    private ClientKeyResolver clientKeyResolver;
 
     @Autowired
     private CustomDynamicRedisRateLimiter customDynamicRedisRateLimiter;
@@ -39,6 +35,11 @@ public class CustomGatewayConfig {
 
         var routes = builder.routes();
 
+        if (dbRoutes == null) {
+            System.out.println("Getting routes from are empty.");
+            return routes.build();
+        }
+
         for (Map<String, Object> dbRoute : dbRoutes) {
             var routeId = dbRoute.get("route_id").toString();
             routes.route(
@@ -54,7 +55,7 @@ public class CustomGatewayConfig {
 
                             f.requestRateLimiter(cfg ->
                                 cfg.setRateLimiter(customDynamicRedisRateLimiter)
-                                    .setKeyResolver(ipKeyResolver)
+                                    .setKeyResolver(clientKeyResolver)
                             );
                             return f;
                         })

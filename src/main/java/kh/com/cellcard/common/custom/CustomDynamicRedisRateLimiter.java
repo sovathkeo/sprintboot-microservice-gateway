@@ -5,6 +5,7 @@ import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -13,11 +14,11 @@ import java.util.Map;
 @Component
 public class CustomDynamicRedisRateLimiter extends RedisRateLimiter {
 
-    private final JwtDecoder jwtDecoder;
+    private final ReactiveJwtDecoder jwtDecoder;
 
     //private final StringRedisTemplate redisTemplate;
 
-    public CustomDynamicRedisRateLimiter(JwtDecoder jwtDecoder) {
+    public CustomDynamicRedisRateLimiter(ReactiveJwtDecoder jwtDecoder) {
         super(100, 150);
         this.jwtDecoder = jwtDecoder;
         //this.redisTemplate = redisTemplate;

@@ -35,8 +35,8 @@ public class Response {
         this.data = ResponseData.failed(errorCode, errorMessage, errorDescription);
     }
 
-    protected Response(String errorCode, String errorMessage, String errorDescription, String correlationId, String requestId) {
-        this.meta = ResponseMeta.buildMeta(correlationId, requestId);
+    protected Response(String errorCode, String errorMessage, String errorDescription) {
+        this.meta = ResponseMeta.buildMeta();
         this.data = ResponseData.failed(errorCode, errorMessage, errorDescription);
     }
 
@@ -54,8 +54,8 @@ public class Response {
     }
 
     // Start build failed response
-    public static Response failure(String errorCode, String errorMessage, String errorDescription, String correlationId) {
-        return new Response(errorCode, errorMessage, errorDescription, correlationId);
+    public static Response failure(String errorCode, String errorMessage, String errorDescription) {
+        return new Response(errorCode, errorMessage, errorDescription);
     }
 
     public static Response unAuthorized(String errorMessage, String errorDescription, String correlationId) {

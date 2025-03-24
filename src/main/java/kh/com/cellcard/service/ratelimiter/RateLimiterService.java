@@ -67,7 +67,7 @@ public class RateLimiterService {
     public Mono<Bucket> resolveBucketASync(Jwt jwt) {
 
         var key = jwt.getClaimAsString("sub");
-        var tps = NumberHelper.toIntOrDefault(jwt.getClaimAsString("client-tps"), 1);
+        var tps = NumberHelper.toIntOrDefault(jwt.getClaimAsString("client_tps"), 1);
 
         BucketConfiguration bucketConfiguration = BucketConfiguration.builder()
             .addLimit(Bandwidth.builder()

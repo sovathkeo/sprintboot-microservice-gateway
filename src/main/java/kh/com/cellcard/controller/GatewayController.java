@@ -1,22 +1,25 @@
 package kh.com.cellcard.controller;
 
 import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
-import io.github.bucket4j.distributed.proxy.ProxyManager;
 import io.github.bucket4j.distributed.proxy.RemoteBucketBuilder;
 import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
-import io.lettuce.core.internal.LettuceClassUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
+import org.springframework.cloud.gateway.route.RouteDefinition;
+import org.springframework.cloud.gateway.route.RouteDefinitionWriter;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -30,6 +33,15 @@ public class GatewayController {
 
     @Autowired
     private RedisClient redisClient;
+
+    private final RouteDefinitionWriter routeDefinitionWriter;
+    private final ApplicationEventPublisher applicationEventPublisher;
+
+
+    public GatewayController(RouteDefinitionWriter routeDefinitionWriter, ApplicationEventPublisher applicationEventPublisher) {
+        this.routeDefinitionWriter = routeDefinitionWriter;
+        this.applicationEventPublisher = applicationEventPublisher;
+    }
 
     @GetMapping(value = "/name", produces = MediaType.ALL_VALUE)
     public Object getName(@RequestParam("name") String name, @RequestHeader HttpHeaders header) {
@@ -59,5 +71,14 @@ public class GatewayController {
                 put("name", name);
             }
         };
+    }
+
+    @PostMapping("/routes")
+    public Mono<ResponseEntity<?>> createRoute(@RequestBody RouteDefinition routeDefinition) {
+        return this.routeDefinitionWriter.save(Mono.just(routeDefinition))
+            .then(Mono.fromRunnable(() -> {
+                applicationEventPublisher.publishEvent(new RefreshRoutesEvent(this));
+            }))
+            .then(Mono.just(ResponseEntity.status(HttpStatus.CREATED).body("route added")));
     }
 }

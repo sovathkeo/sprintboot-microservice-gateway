@@ -23,11 +23,11 @@ spring:
           min-idle: 0          # Minimum number of idle connections
           time-between-eviction-runs: 60000ms # Time between eviction runs
 
-  security:
-    oauth2:
-      resource-server:
-        jwt:
-          issuer-uri: http://localhost:9000
+#  security:
+#    oauth2:
+#      resource-server:
+#        jwt:
+#          issuer-uri: http://localhost:9000
 
   cloud:
     config:
