@@ -5,21 +5,16 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
 import kh.com.cellcard.common.configuration.appsetting.ApplicationConfiguration;
-import kh.com.cellcard.common.custom.CustomTokenValidator;
 import kh.com.cellcard.common.helper.RsaHelper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
@@ -34,21 +29,11 @@ public class CustomJwtConfig {
 
     @Bean
     public ReactiveJwtDecoder jwtDecoder() {
-        var jwtDecoder =  NimbusReactiveJwtDecoder.withJwkSetUri(appSetting.authentication.jwksUrl).build();
-        // Open code below to enable custom token validator
-        /*DelegatingOAuth2TokenValidator<Jwt> jwtValidator = new DelegatingOAuth2TokenValidator<>(
-            JwtValidators.createDefaultWithIssuer(appSetting.authentication.issuer),
-            new CustomTokenValidator(appSetting)
-        );
-        jwtDecoder.setJwtValidator(jwtValidator);*/
-        return jwtDecoder;
+        return NimbusReactiveJwtDecoder.withJwkSetUri(appSetting.authentication.jwksUrl).build();
     }
 
     @Bean
-    public NimbusJwtEncoder jwtEncoder() throws URISyntaxException, MalformedURLException {
-        // Generate an RSA key pair (replace with your secure key retrieval)
-        //KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        //keyPairGenerator.initialize(2048);
+    public NimbusJwtEncoder jwtEncoder() {
 
         KeyPair keyPair = RsaHelper.generateRsaKeyPair();
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();

@@ -71,7 +71,7 @@ management:
 
 logging:
   level:
-    root: debug
+    root: info
     #org:
       #springframework: INFO
   pattern:
