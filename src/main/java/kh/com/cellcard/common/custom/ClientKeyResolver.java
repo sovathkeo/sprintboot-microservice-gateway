@@ -2,8 +2,10 @@ package kh.com.cellcard.common.custom;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import kh.com.cellcard.common.configuration.appsetting.ApplicationConfiguration;
 import kh.com.cellcard.common.constant.HttpHeaderConstant;
 import kh.com.cellcard.common.helper.JsonObjectHelper;
+import kh.com.cellcard.common.helper.JwtHelper;
 import kh.com.cellcard.common.helper.StringHelper;
 import kh.com.cellcard.common.wrapper.SerializationWrapper;
 import kh.com.cellcard.model.auth.AuthorizeResultModel;
@@ -14,8 +16,7 @@ import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -26,18 +27,25 @@ import java.util.Objects;
 @Component
 public class ClientKeyResolver implements KeyResolver {
 
+    private final ApplicationConfiguration appSetting;
     private final ReactiveJwtDecoder jwtDecoder;
     private final RateLimiterService rateLimiterService;
     private final ReactiveRedisTemplate<String, String> redisTemplate;
 
+    private final NimbusJwtEncoder jwtEncoder;
+
     public ClientKeyResolver(
+        ApplicationConfiguration appSetting,
         ReactiveJwtDecoder jwtDecoder,
         RateLimiterService rateLimiterService,
-        ReactiveRedisTemplate<String, String> redisTemplate) {
+        ReactiveRedisTemplate<String, String> redisTemplate,
+        NimbusJwtEncoder jwtEncoder) {
+        this.appSetting = appSetting;
 
         this.redisTemplate = redisTemplate;
         this.jwtDecoder = jwtDecoder;
         this.rateLimiterService = rateLimiterService;
+        this.jwtEncoder = jwtEncoder;
     }
 
     @Override
@@ -45,7 +53,7 @@ public class ClientKeyResolver implements KeyResolver {
         return Mono.justOrEmpty(exchange.getRequest().getHeaders().getFirst(HttpHeaderConstant.AUTHORIZATION))
             .filter(authHeader -> authHeader.startsWith("Bearer"))
             .map(authHeader -> authHeader.substring(7))
-            .flatMap(token -> jwtDecoder.decode(token)
+            .flatMap(token -> decodeJwt(token)
                 .flatMap(jwt -> authorize(jwt, exchange))
                 .flatMap(authResult -> {
                     if (authResult.isAuthorized) {
@@ -70,8 +78,6 @@ public class ClientKeyResolver implements KeyResolver {
             return Mono.just(AuthorizeResultModel.success(jwt));
         }
 
-        //((DefaultServerWebExchangeBuilder.MutativeDecorator) exchange).getDelegate().getRequest().getPath() : to get original
-
         var uri = exchange.getRequest().getURI().getRawPath();
 
         return redisTemplate.opsForValue().get(key)
@@ -80,12 +86,12 @@ public class ClientKeyResolver implements KeyResolver {
                 var clientId = JsonObjectHelper.getAsStringOrEmpty(json, "clientId");
 
                 if (!Objects.equals(clientId, sub)) {
-                    return Mono.just(AuthorizeResultModel.unAuthorized(""));
+                    return Mono.just(AuthorizeResultModel.unAuthorized("client id miss-match"));
                 }
 
                 var resources = JsonObjectHelper.getAsJsonArray(json, "resources");
 
-                if (!isAllowedAccessUrl(resources, uri, exchange)) {
+                if (!isAllowedAccessUrl(resources, uri)) {
                     return Mono.just(AuthorizeResultModel.unAuthorized("you are not authorized to access the resource"));
                 }
 
@@ -97,7 +103,7 @@ public class ClientKeyResolver implements KeyResolver {
             });
     }
 
-    private boolean isAllowedAccessUrl(JsonArray jsonArrayResource, String url, ServerWebExchange exchange) {
+    private boolean isAllowedAccessUrl(JsonArray jsonArrayResource, String url) {
         var isValidJson = !jsonArrayResource.isEmpty() && !jsonArrayResource.isJsonNull();
         return isValidJson && jsonArrayResource
             .asList()
@@ -135,7 +141,20 @@ public class ClientKeyResolver implements KeyResolver {
             }).next();
     }
 
+    private Mono<Jwt> decodeJwt(String token) {
+        var jwtDecoded = JwtHelper.decode(token);
+        if (jwtDecoded == null) {
+            return Mono.error(new RuntimeException("Error decoding token"));
+        }
+        var issuer = jwtDecoded.getOrDefault("iss", "");
+        if (appSetting.authentication.isInternalAuthServer(issuer)) {
+            return jwtDecoder.decode(token);
+        }
+        return Mono.just(jwtEncoder.encode(JwtEncoderParameters.from(JwtClaimsSet.builder()
+            .subject(jwtDecoded.getOrDefault("sub", ""))
+            .build())));
 
+    }
 
     private Mono<String> ratingRequest(Jwt jwt, ServerWebExchange exchange) {
 
@@ -165,7 +184,7 @@ public class ClientKeyResolver implements KeyResolver {
         return Mono.defer(() -> {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-            var responseBody = Response.failure("401", "You're not authorized", "UnAuthorized");
+            var responseBody = Response.failure("401", "You're not authorized", errorMessage);
             byte[] bytes = responseBody.getBytes();
 
             return exchange.getResponse().writeWith(Mono.just(exchange.getResponse()

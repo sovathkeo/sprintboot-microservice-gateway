@@ -9,7 +9,6 @@ spring:
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
 
-
   data:
     redis:
       host: 172.16.101.14
@@ -22,12 +21,6 @@ spring:
           max-idle: 8          # Maximum number of idle connections
           min-idle: 0          # Minimum number of idle connections
           time-between-eviction-runs: 60000ms # Time between eviction runs
-
-#  security:
-#    oauth2:
-#      resource-server:
-#        jwt:
-#          issuer-uri: http://localhost:9000
 
   cloud:
     config:
@@ -78,8 +71,9 @@ management:
 
 logging:
   level:
-    org:
-      springframework: INFO
+    root: debug
+    #org:
+      #springframework: INFO
   pattern:
     date-format: yyyy-dd-MM HH:mm:ss.SSS
     console: '%d{yyyy-MM-dd HH:mm:ss.SSS}  %-5level 1 --- [%-20.20thread] %-38X{X-CorrelationId:-00000000-0000-0000-0000-000000000000} %-30.30logger{0} : %msg%n'
@@ -92,4 +86,15 @@ application-config:
     basic-auth-users:
       - username: user1
         password: user1
+    jwks-url: "http://localhost:9000/oauth2/jwks"
+    issuer: "http://localhost:9000"
+    auth-servers:
+      - name: internal-auth
+        issuers: ["http://localhost:9000"]
+        introspect-url: "http://localhost:9000/oauth2/introspect"
+      - name: apim-auth
+        issuers: [ "https://stg-cpapi.cellcard.com.kh:443/oauth2/token", "https://dev-apim.cellcard.com.kh:9443/oauth2/token" ]
+        introspect-url: "https://stg-cpapi.cellcard.com.kh/oauth2/introspect"
+        username: "vas-development"
+        password: "#doD1JjZTRvUth7Hu81pa"
 
